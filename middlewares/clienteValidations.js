@@ -43,7 +43,31 @@ const clientCreateValidation = () => {
       .isLength({ min: 10, max: 10 })
       .withMessage(
         "Insira uma data de nascimento válida! (Formato: DD/MM/AAAA)"
-      ),
+      )
+      .custom((value) => {
+        // Verifique se a data pode ser convertida em um objeto Date válido
+        const dateParts = value.split("/");
+        const day = parseInt(dateParts[0], 10);
+        const month = parseInt(dateParts[1], 10);
+        const year = parseInt(dateParts[2], 10);
+
+        if (
+          isNaN(day) ||
+          isNaN(month) ||
+          isNaN(year) ||
+          day < 1 ||
+          day > 31 ||
+          month < 1 ||
+          month > 12 ||
+          year < 1900 // Você pode ajustar este limite conforme necessário
+        ) {
+          throw new Error(
+            "Insira uma data de nascimento válida! (Formato: DD/MM/AAAA)"
+          );
+        }
+
+        return true;
+      }),
     body("genero")
       .notEmpty()
       .withMessage("Selecione o gênero!")

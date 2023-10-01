@@ -39,14 +39,23 @@ const register = async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(senha, await bcrypt.genSalt());
-    const insertedUserId = await insertUserIntoDatabase(
-      nome,
-      email,
-      passwordHash,
-      telefone,
-      data_nascimento,
-      genero
-    );
+
+    const insertedUserId = await new Promise((resolve, reject) => {
+      const sql =
+        "INSERT INTO clientes (nome, email, senha, telefone, data_nascimento, genero) VALUES (?, ?, ?, ?, ?, ?)";
+
+      db.query(
+        sql,
+        [nome, email, passwordHash, telefone, data_nascimento, genero],
+        (error, results) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(results.insertId);
+          }
+        }
+      );
+    });
 
     const token = generateToken(insertedUserId);
 
@@ -90,8 +99,16 @@ const login = async (req, res) => {
   }
 };
 
+// Pegando usuário atual
+const getCurrentUser = async (req, res) => {
+  const user = req.user;
+
+  res.status(200).json(user);
+};
+
 module.exports = {
   register,
   login,
+  getCurrentUser,
   getAllClients,
 };
