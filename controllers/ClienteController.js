@@ -1,4 +1,5 @@
 const db = require("../config/db.js");
+const dbHelpers = require("../utils/dbHelpers.js");
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -31,58 +32,66 @@ const register = async (req, res) => {
   const { nome, email, senha, telefone, data_nascimento, genero } = req.body;
 
   try {
-    // Checando se o cliente existe
-    const query = "SELECT * FROM clientes WHERE email = ?";
-    db.query(query, [email], async (err, results) => {
-      if (err) {
-        console.error("Erro ao verificar cliente:", err);
-        return res.status(500).json({ error: "Erro interno do servidor" });
-      }
+    const emailExists = await dbHelpers.findUserByEmail(db, email);
 
-      if (results.length > 0) {
-        return res.status(409).json({ error: "Email já cadastrado." });
-      }
+    if (emailExists) {
+      return res.status(409).json({ errors: "Email já cadastrado." });
+    }
 
-      try {
-        // Gerando senha criptografada
-        const salt = await bcrypt.genSalt();
-        const passwordHash = await bcrypt.hash(senha, salt);
+    const passwordHash = await bcrypt.hash(senha, await bcrypt.genSalt());
+    const insertedUserId = await insertUserIntoDatabase(
+      nome,
+      email,
+      passwordHash,
+      telefone,
+      data_nascimento,
+      genero
+    );
 
-        // Inserindo o novo cliente no banco de dados
-        const inserirUsuarioSQL =
-          "INSERT INTO clientes (nome, email, senha, telefone, data_nascimento, genero) VALUES (?, ?, ?, ?, ?, ?)";
-        const values = [
-          nome,
-          email,
-          passwordHash,
-          telefone,
-          data_nascimento,
-          genero,
-        ];
+    const token = generateToken(insertedUserId);
 
-        db.query(inserirUsuarioSQL, values, (err, results) => {
-          if (err) {
-            console.error("Erro ao inserir cliente:", err);
-            return res.status(500).json({ error: "Erro interno do servidor" });
-          }
-
-          return res.status(201).json({
-            id: results.insertId,
-            token: generateToken(results.insertId),
-          });
-        });
-      } catch (error) {
-        console.error("Erro ao gerar senha criptografada:", error);
-        return res.status(500).json({ error: "Erro interno do servidor" });
-      }
+    return res.status(201).json({
+      id: insertedUserId,
+      token,
     });
   } catch (error) {
-    console.error("Erro ao verificar cliente:", error);
+    console.error("Erro ao registrar cliente:", error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
+};
+
+const login = async (req, res) => {
+  const { email, senha } = req.body;
+
+  try {
+    const user = await dbHelpers.findUserByEmail(db, email);
+    console.log(user);
+
+    if (!user) {
+      return res.status(404).json({ errors: ["Usuário não encontrado!"] });
+    }
+
+    const isPasswordValid = await bcrypt.compare(senha, user.senha);
+
+    if (!isPasswordValid) {
+      return res.status(422).json({ errors: ["Senha inválida!"] });
+    }
+
+    const token = generateToken(user.id_cliente);
+
+    return res.status(200).json({
+      id: user.id_cliente,
+      imagem: user.imagem,
+      token,
+    });
+  } catch (error) {
+    console.error("Erro ao fazer login:", error);
     return res.status(500).json({ error: "Erro interno do servidor" });
   }
 };
 
 module.exports = {
   register,
+  login,
   getAllClients,
 };

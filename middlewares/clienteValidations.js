@@ -54,6 +54,22 @@ const clientCreateValidation = () => {
   ];
 };
 
+const loginValidation = () => {
+  return [
+    body("email")
+      .isString()
+      .withMessage("Insira um email válido!")
+      .isEmail()
+      .withMessage("Insira um email válido!"),
+    body("senha")
+      .isString()
+      .withMessage("Insira a senha!")
+      .isLength({ min: 5 })
+      .withMessage("A senha precisa ter no mínimo 5 carcteres."),
+  ];
+};
+
 module.exports = {
   clientCreateValidation,
+  loginValidation,
 };
