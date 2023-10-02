@@ -42,11 +42,18 @@ const register = async (req, res) => {
 
     const insertedUserId = await new Promise((resolve, reject) => {
       const sql =
-        "INSERT INTO clientes (nome, email, senha, telefone, data_nascimento, genero) VALUES (?, ?, ?, ?, ?, ?)";
-
+        "INSERT INTO clientes (nome, email, senha, telefone, data_nascimento, genero, tipo_conta) VALUES (?, ?, ?, ?, ?, ?, ?)";
       db.query(
         sql,
-        [nome, email, passwordHash, telefone, data_nascimento, genero],
+        [
+          nome,
+          email,
+          passwordHash,
+          telefone,
+          data_nascimento,
+          genero,
+          "Cliente",
+        ],
         (error, results) => {
           if (error) {
             reject(error);
@@ -106,9 +113,98 @@ const getCurrentUser = async (req, res) => {
   res.status(200).json(user);
 };
 
+// Atualizando cliente
+const updateClient = async (req, res) => {
+  const {
+    nome,
+    senha,
+    email,
+    cpf,
+    data_nascimento,
+    genero,
+    telefone,
+    endereco,
+    cidade,
+    estado,
+    cep,
+  } = req.body;
+
+  let imagem = null;
+
+  if (req.file) {
+    imagem = req.file.filename;
+  }
+
+  const reqUser = req.user;
+
+  console.log("DEU RUIM + " + reqUser.nome);
+  console.log("DEU RUIM + " + reqUser.id_cliente);
+
+  const user = await dbHelpers.findUserByEmail(db, reqUser.email);
+
+  console.log("DEU RUIM 2 " + user.id_cliente);
+
+  if (!req.user) {
+    return res.status(400).json({ message: "Usuário não autenticado" });
+  }
+
+  if (nome) {
+    user.nome = nome;
+  }
+
+  if (email) {
+    user.email = email;
+  }
+
+  if (cpf) {
+    user.cpf = cpf;
+  }
+
+  if (data_nascimento) {
+    user.data_nascimento = data_nascimento;
+  }
+
+  if (senha) {
+    const salt = await bcrypt.genSalt();
+    const senhaHash = await bcrypt.hash(senha, salt);
+    user.senha = senhaHash;
+  }
+
+  if (imagem) {
+    user.imagem = imagem;
+  }
+
+  const updateQuery = `
+   UPDATE clientes 
+   SET nome = ?, email = ?, senha = ?, imagem = ?, cpf = ?, data_nascimento = ?
+   WHERE id_cliente = ?
+ `;
+
+  const values = [
+    user.nome,
+    user.email,
+    user.senha,
+    user.imagem,
+    user.cpf,
+    data_nascimento,
+    user.id_cliente,
+  ];
+
+  db.query(updateQuery, values, (err, results) => {
+    if (err) {
+      console.error("Erro ao atualizar o cliente:", err);
+      return res.status(500).json({ message: "Erro ao atualizar o cliente" });
+    }
+
+    console.log("Cliente atualizado com sucesso!");
+    return res.status(200).json({ message: "Cliente atualizado com sucesso" });
+  });
+};
+
 module.exports = {
   register,
   login,
   getCurrentUser,
+  updateClient,
   getAllClients,
 };

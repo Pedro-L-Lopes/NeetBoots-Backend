@@ -16,7 +16,7 @@ const authGuard = (req, res, next) => {
 
     // Consultar o banco de dados para obter informações do usuário
     db.query(
-      "SELECT nome, email, cpf, data_nascimento, genero, telefone, endereco, cidade, estado, cep, id_tipo_conta, data_criacao, data_atualizacao FROM clientes WHERE id_cliente = ?",
+      "SELECT nome, email, cpf, data_nascimento, genero, telefone, endereco, cidade, estado, cep, tipo_conta, data_criacao, data_atualizacao FROM clientes WHERE id_cliente = ?",
       [verified.id],
       (error, results) => {
         if (error) {
