@@ -1,4 +1,4 @@
-const findUserByEmail = (db, email) => {
+const findClientByEmail = (db, email) => {
   return new Promise((resolve, reject) => {
     const query = "SELECT * FROM clientes WHERE email = ?";
     db.query(query, [email], (err, results) => {
@@ -17,9 +17,9 @@ const findUserByEmail = (db, email) => {
   });
 };
 
-const findUserById = (db, id) => {
+const findClientById = (db, id) => {
   return new Promise((resolve, reject) => {
-    const query = `SELECT * FROM clientes WHERE id_cliente = ?`;
+    const query = `SELECT id_cliente, nome, email, imagem, cpf, data_nascimento, genero, telefone, endereco, cidade, estado, cep, tipo_conta, data_criacao, data_atualizacao FROM clientes WHERE id_cliente = ?`;
     db.query(query, [id], (err, results) => {
       if (err) {
         reject(err);
@@ -37,6 +37,6 @@ const findUserById = (db, id) => {
 };
 
 module.exports = {
-  findUserByEmail,
-  findUserById,
+  findClientByEmail,
+  findClientById,
 };

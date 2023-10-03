@@ -93,7 +93,6 @@ const loginValidation = () => {
   ];
 };
 
-// Validação de atualização
 const clientUpdateValidation = () => {
   return [
     body("nome")

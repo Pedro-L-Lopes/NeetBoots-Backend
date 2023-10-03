@@ -32,7 +32,7 @@ const register = async (req, res) => {
   const { nome, email, senha, telefone, data_nascimento, genero } = req.body;
 
   try {
-    const emailExists = await dbHelpers.findUserByEmail(db, email);
+    const emailExists = await dbHelpers.findClientByEmail(db, email);
 
     if (emailExists) {
       return res.status(409).json({ errors: "Email já cadastrado." });
@@ -80,7 +80,7 @@ const login = async (req, res) => {
   const { email, senha } = req.body;
 
   try {
-    const user = await dbHelpers.findUserByEmail(db, email);
+    const user = await dbHelpers.findClientByEmail(db, email);
     console.log(user);
 
     if (!user) {
@@ -137,12 +137,7 @@ const updateClient = async (req, res) => {
 
   const reqUser = req.user;
 
-  console.log("DEU RUIM + " + reqUser.nome);
-  console.log("DEU RUIM + " + reqUser.id_cliente);
-
-  const user = await dbHelpers.findUserByEmail(db, reqUser.email);
-
-  console.log("DEU RUIM 2 " + user.id_cliente);
+  const user = await dbHelpers.findClientById(db, reqUser.id_cliente);
 
   if (!req.user) {
     return res.status(400).json({ message: "Usuário não autenticado" });
@@ -158,6 +153,30 @@ const updateClient = async (req, res) => {
 
   if (cpf) {
     user.cpf = cpf;
+  }
+
+  if (genero) {
+    user.genero = genero;
+  }
+
+  if (telefone) {
+    user.telefone = telefone;
+  }
+
+  if (endereco) {
+    user.endereco = endereco;
+  }
+
+  if (cidade) {
+    user.cidade = cidade;
+  }
+
+  if (estado) {
+    user.estado = estado;
+  }
+
+  if (cep) {
+    user.cep = cep;
   }
 
   if (data_nascimento) {
@@ -176,7 +195,7 @@ const updateClient = async (req, res) => {
 
   const updateQuery = `
    UPDATE clientes 
-   SET nome = ?, email = ?, senha = ?, imagem = ?, cpf = ?, data_nascimento = ?
+   SET nome = ?, email = ?, senha = ?, imagem = ?, cpf = ?, data_nascimento = ?, genero = ?, telefone = ?, endereco = ?, cidade = ?, estado = ?, cep = ?
    WHERE id_cliente = ?
  `;
 
@@ -186,7 +205,13 @@ const updateClient = async (req, res) => {
     user.senha,
     user.imagem,
     user.cpf,
-    data_nascimento,
+    user.data_nascimento,
+    user.genero,
+    user.telefone,
+    user.endereco,
+    user.cidade,
+    user.estado,
+    user.cep,
     user.id_cliente,
   ];
 
@@ -201,10 +226,30 @@ const updateClient = async (req, res) => {
   });
 };
 
+const getUserById = async (req, res) => {
+  const { id } = req.params;
+
+  let user = null;
+
+  try {
+    user = await dbHelpers.findClientById(db, id);
+  } catch (error) {
+    res.status(404).json({ errors: ["Usuário não encontrado!"] });
+    return;
+  }
+
+  if (!user) {
+    res.status(404).json({ errors: ["Usuário não encontrado!"] });
+    return;
+  }
+  return res.status(200).json(user);
+};
+
 module.exports = {
   register,
   login,
   getCurrentUser,
   updateClient,
+  getUserById,
   getAllClients,
 };

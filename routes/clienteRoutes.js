@@ -8,6 +8,7 @@ const {
   getAllClients,
   getCurrentUser,
   updateClient,
+  getUserById,
 } = require("../controllers/ClienteController");
 
 // Middlewares
@@ -32,5 +33,6 @@ router.put(
   imageUpload.single("imagem"),
   updateClient
 );
+router.get("/:id", getUserById);
 
 module.exports = router;

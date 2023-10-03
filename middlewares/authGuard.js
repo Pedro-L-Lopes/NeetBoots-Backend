@@ -1,6 +1,6 @@
+const db = require("../config/db.js");
 const jwt = require("jsonwebtoken");
 const jwtSecret = process.env.JWT_SECRET;
-const db = require("../config/db.js");
 
 const authGuard = (req, res, next) => {
   const authHeader = req.headers["authorization"];
@@ -16,7 +16,7 @@ const authGuard = (req, res, next) => {
 
     // Consultar o banco de dados para obter informações do usuário
     db.query(
-      "SELECT nome, email, cpf, data_nascimento, genero, telefone, endereco, cidade, estado, cep, tipo_conta, data_criacao, data_atualizacao FROM clientes WHERE id_cliente = ?",
+      "SELECT id_cliente, nome, email, imagem, cpf, data_nascimento, genero, telefone, endereco, cidade, estado, cep, tipo_conta, data_criacao, data_atualizacao FROM clientes WHERE id_cliente = ?",
       [verified.id],
       (error, results) => {
         if (error) {
