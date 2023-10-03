@@ -24,10 +24,10 @@ const { imageUpload } = require("../middlewares/imageUpload");
 router.get("/", validate, getAllClients);
 router.post("/register", clientCreateValidation(), validate, register);
 router.post("/login", loginValidation(), validate, login);
-router.get("/profile", authGuard, getCurrentUser);
+router.get("/profile", authGuard(1), getCurrentUser);
 router.put(
   "/",
-  authGuard,
+  authGuard(1),
   clientUpdateValidation(),
   validate,
   imageUpload.single("imagem"),

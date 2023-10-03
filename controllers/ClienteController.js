@@ -4,6 +4,9 @@ const dbHelpers = require("../utils/dbHelpers.js");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+const path = require("path");
+const fs = require("fs");
+
 const jwtSecret = process.env.JWT_SECRET;
 
 // Gerando token de usuário
@@ -129,18 +132,33 @@ const updateClient = async (req, res) => {
     cep,
   } = req.body;
 
-  let imagem = null;
-
-  if (req.file) {
-    imagem = req.file.filename;
-  }
-
   const reqUser = req.user;
 
   const user = await dbHelpers.findClientById(db, reqUser.id_cliente);
 
   if (!req.user) {
     return res.status(400).json({ message: "Usuário não autenticado" });
+  }
+
+  let imagem = null;
+
+  if (req.file) {
+    imagem = req.file.filename;
+
+    if (user.imagem) {
+      const pathToOldImage = path.join(
+        __dirname,
+        "../uploads/clientes/",
+        user.imagem
+      );
+      console.log(user.imagem);
+      try {
+        fs.unlinkSync(pathToOldImage);
+        console.log("Imagem anterior excluída com sucesso!");
+      } catch (err) {
+        console.error("Erro ao excluir a imagem anterior:", err);
+      }
+    }
   }
 
   if (nome) {
