@@ -6,10 +6,10 @@ const clienteTable =
   "SELECT id_cliente, nome, email, imagem, cpf, data_nascimento, genero, telefone, endereco, cidade, estado, cep, tipo_conta, data_criacao, data_atualizacao FROM clientes WHERE id_cliente = ?";
 
 const vendedorTable =
-  "SELECT id_vendedor, nome, nome_loja, email, imagem_loja, cnpj, cpf, data_nascimento, genero, telefone, endereco, cidade, estado, cep, tipo_conta, data_criacao, data_atualizacao FROM vendedor WHERE id_vendedor = ?";
+  "SELECT id_vendedor, nome, nome_loja, email, imagem_loja, cnpj, cpf, genero, telefone, endereco, cidade, estado, cep, tipo_conta, data_criacao, data_atualizacao FROM vendedores WHERE id_vendedor = ?";
 
 const admTable =
-  "SELECT id_vendedor, nome, nome_loja, email, imagem_loja, cnpj, cpf, data_nascimento, genero, telefone, endereco, cidade, estado, cep, tipo_conta, data_criacao, data_atualizacao FROM vendedor WHERE id_vendedor = ?";
+  "SELECT id_vendedores, nome, nome_loja, email, imagem_loja, cnpj, cpf, data_nascimento, genero, telefone, endereco, cidade, estado, cep, tipo_conta, data_criacao, data_atualizacao FROM vendedor WHERE id_vendedor = ?";
 
 const authGuard = (type) => {
   return (req, res, next) => {
@@ -25,15 +25,19 @@ const authGuard = (type) => {
       const verified = jwt.verify(token, jwtSecret);
 
       let typeAccount;
+      let typeA;
       switch (type) {
         case 1:
           typeAccount = clienteTable;
+          typeA = "Cliente";
           break;
         case 2:
           typeAccount = vendedorTable;
+          typeA = "Vendedor";
           break;
         case 3:
           typeAccount = admTable;
+          typeA = "Administração";
           break;
         default:
           return res.status(400).json({ errors: ["Tipo de conta inválido!"] });
@@ -51,6 +55,12 @@ const authGuard = (type) => {
         }
 
         const user = results[0];
+
+        // Verificar o tipo de conta do usuário
+        if (user.tipo_conta !== typeA) {
+          return res.status(403).json({ errors: ["Acesso negado!"] });
+        }
+
         // Remover a senha do objeto do usuário
         delete user.senha;
 
