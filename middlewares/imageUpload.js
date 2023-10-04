@@ -12,6 +12,8 @@ const imageStorage = multer.diskStorage({
       folder = "vendedores";
     } else if (req.baseUrl.includes("produtos")) {
       folder = "produtos";
+    } else if (req.baseUrl.includes("bc")) {
+      folder = "marcas";
     }
 
     cb(null, `uploads/${folder}/`);
