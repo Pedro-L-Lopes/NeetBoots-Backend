@@ -20,6 +20,26 @@ const createBrandValidation = () => {
   ];
 };
 
+const createCategoryValidation = () => {
+  return [
+    body("nome")
+      .notEmpty()
+      .withMessage("Insira o nome da categoria")
+      .isString()
+      .withMessage("Insira o nome da categoria")
+      .isLength({ min: 2 })
+      .withMessage("O nome precisa ter no mínimo 2 caracteres"),
+    body("descricao")
+      .notEmpty()
+      .withMessage("Insira a descrição da categoria")
+      .isString()
+      .withMessage("Insira a descrição da categoria")
+      .isLength({ min: 2 })
+      .withMessage("A descrição precisa ter no mínimo 2 caracteres"),
+  ];
+};
+
 module.exports = {
   createBrandValidation,
+  createCategoryValidation,
 };
