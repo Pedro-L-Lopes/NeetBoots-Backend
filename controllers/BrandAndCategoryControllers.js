@@ -45,7 +45,7 @@ const getBrandById = async (req, res) => {
       return res.status(200).json(data);
     });
   } catch (error) {
-    res.status(404).json({ errors: ["Usuário não encontrado!"] });
+    res.status(404).json({ errors: ["Marca não encontrada!"] });
     return;
   }
 };
@@ -67,4 +67,41 @@ const insertCategory = async (req, res) => {
   });
 };
 
-module.exports = { insertBrand, getAllBrands, getBrandById, insertCategory };
+const getAllCategories = async (req, res) => {
+  const q = "SELECT id_categoria, nome, descricao FROM categorias";
+
+  db.query(q, (err, data) => {
+    if (err) {
+      console.log("Erro ao buscar marcas: ", err);
+      return res.status(500).json({ error: "Erro interno do servidor" });
+    }
+
+    return res.status(200).json(data);
+  });
+};
+
+const getCategoryById = async (req, res) => {
+  const { id } = req.params;
+
+  const q = `SELECT id_categoria, nome, descricao FROM categorias WHERE id_categoria = ${id}`;
+
+  let category = null;
+
+  try {
+    category = db.query(q, (err, data) => {
+      return res.status(200).json(data);
+    });
+  } catch (error) {
+    res.status(404).json({ errors: ["Categoria não encontrada!"] });
+    return;
+  }
+};
+
+module.exports = {
+  insertBrand,
+  getAllBrands,
+  getBrandById,
+  insertCategory,
+  getAllCategories,
+  getCategoryById,
+};

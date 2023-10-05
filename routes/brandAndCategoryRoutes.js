@@ -7,6 +7,8 @@ const {
   getAllBrands,
   getBrandById,
   insertCategory,
+  getAllCategories,
+  getCategoryById,
 } = require("../controllers/BrandAndCategoryControllers");
 
 // Middlewares
@@ -17,23 +19,25 @@ const {
 const validate = require("../middlewares/handleValidation");
 const { imageUpload } = require("../middlewares/imageUpload");
 
-// Categorias
-router.post(
-  "/insertCategory",
-  createCategoryValidation(),
-  validate,
-  insertCategory
-);
-
 // Marcas
 router.get("/brands", getAllBrands);
-router.get("/:id", getBrandById);
+router.get("/brand/:id", getBrandById);
 router.post(
   "/insertBrand",
   //   createBrandValidation(),
   validate,
   imageUpload.single("logotipo"),
   insertBrand
+);
+
+// Categorias
+router.get("/categories", getAllCategories);
+router.get("/category/:id", getCategoryById);
+router.post(
+  "/insertCategory",
+  createCategoryValidation(),
+  validate,
+  insertCategory
 );
 
 module.exports = router;
