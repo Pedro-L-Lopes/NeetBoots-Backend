@@ -23,9 +23,20 @@ const insertBrand = async (req, res) => {
 };
 
 const getAllBrands = async (req, res) => {
-  const q = "SELECT id_marca, nome, origem, logotipo FROM marcas";
+  let { limit, page } = req.query;
 
-  db.query(q, (err, data) => {
+  limit = Number(limit) || 16;
+  page = Number(page) || 1;
+
+  // Calcula o valor do offset dinamicamente com base no número da página e no limite
+  const offset = (page - 1) * limit;
+
+  console.log(limit, offset);
+
+  const q =
+    "SELECT id_marca, nome, origem, logotipo FROM marcas LIMIT ? OFFSET ?";
+
+  db.query(q, [limit, offset], (err, data) => {
     if (err) {
       console.log("Erro ao buscar marcas: ", err);
       return res.status(500).json({ error: "Erro interno do servidor" });
