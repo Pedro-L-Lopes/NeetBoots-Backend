@@ -55,7 +55,7 @@ const register = async (req, res) => {
       nome,
       nome_loja,
       cnpj,
-      cpf,
+      cpf, 
       email,
       passwordHash,
       telefone,
