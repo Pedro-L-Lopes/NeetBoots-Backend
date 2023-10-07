@@ -1,4 +1,8 @@
 const db = require("../config/db.js");
+
+const util = require("util");
+const query = util.promisify(db.query).bind(db);
+
 const dbHelpers = require("../utils/dbHelpers.js");
 
 const bcrypt = require("bcryptjs");
@@ -18,17 +22,17 @@ const generateToken = (id) => {
 
 // Buscando todos os vendores
 const getAllSellers = async (req, res) => {
-  const q =
-    "SELECT id_vendedor, nome, nome_loja, imagem, email, cnpj FROM vendedores";
+  try {
+    const q =
+      "SELECT id_vendedor, nome, nome_loja, imagem, email, cnpj FROM vendedores";
 
-  db.query(q, (err, data) => {
-    if (err) {
-      console.error("Erro ao buscar vendedores:", err);
-      return res.status(500).json({ error: "Erro interno do servidor" });
-    }
+    const data = await query(q);
 
     return res.status(200).json(data);
-  });
+  } catch (error) {
+    console.error("Erro ao buscar vendedores:", err);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
 };
 
 // Registrando
@@ -37,7 +41,7 @@ const register = async (req, res) => {
     req.body;
 
   try {
-    const emailExists = await dbHelpers.findSellertByEmail(db, email);
+    const emailExists = await dbHelpers.findSellerByEmail(db, email);
 
     if (emailExists) {
       return res.status(409).json({ errors: "Email já cadastrado." });
@@ -45,40 +49,28 @@ const register = async (req, res) => {
 
     const passwordHash = await bcrypt.hash(senha, await bcrypt.genSalt());
 
-    const insertedUserId = await new Promise((resolve, reject) => {
-      const sql =
-        "INSERT INTO vendedores (nome, nome_loja, cnpj, cpf, email, senha, telefone, genero, tipo_conta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-      db.query(
-        sql,
-        [
-          nome,
-          nome_loja,
-          cnpj,
-          cpf,
-          email,
-          passwordHash,
-          telefone,
-          genero,
-          "Vendedor",
-        ],
-        (error, results) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(results.insertId);
-          }
-        }
-      );
-    });
+    const sql =
+      "INSERT INTO vendedores (nome, nome_loja, cnpj, cpf, email, senha, telefone, genero, tipo_conta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    const insertedUserId = await query(sql, [
+      nome,
+      nome_loja,
+      cnpj,
+      cpf,
+      email,
+      passwordHash,
+      telefone,
+      genero,
+      "Vendedor",
+    ]);
 
-    const token = generateToken(insertedUserId);
+    const token = generateToken(insertedUserId.insertId);
 
     return res.status(201).json({
-      id: insertedUserId,
+      id: insertedUserId.insertId,
       token,
     });
   } catch (error) {
-    console.error("Erro ao registrar loja:", error);
+    console.error("Erro ao registrar vendedor:", error);
     return res.status(500).json({ error: "Erro interno do servidor" });
   }
 };
@@ -87,8 +79,7 @@ const login = async (req, res) => {
   const { email, senha } = req.body;
 
   try {
-    const user = await dbHelpers.findSellertByEmail(db, email);
-    console.log(user);
+    const user = await dbHelpers.findSellerByEmail(db, email);
 
     if (!user) {
       return res.status(404).json({ errors: ["Usuário não encontrado!"] });
@@ -121,9 +112,6 @@ const getCurrentUser = async (req, res) => {
     return res.status(403).json({ errors: ["Acesso negado!"] });
   }
 
-  console.log(user);
-  console.log(user.tipo_conta);
-
   res.status(200).json(user);
 };
 
@@ -146,119 +134,119 @@ const updateSeller = async (req, res) => {
 
   const reqUser = req.user;
 
-  const user = await dbHelpers.findSellerById(db, reqUser.id_vendedor);
+  try {
+    const user = await dbHelpers.findSellerById(db, reqUser.id_vendedor);
 
-  if (!req.user) {
-    return res.status(400).json({ errors: "Usuário não autenticado" });
-  }
+    if (!req.user) {
+      return res.status(400).json({ errors: "Usuário não autenticado" });
+    }
 
-  let imagem = null;
+    let imagem = null;
 
-  if (req.file) {
-    imagem = req.file.filename;
+    if (req.file) {
+      imagem = req.file.filename;
 
-    if (user.imagem) {
-      const pathToOldImage = path.join(
-        __dirname,
-        "../uploads/vendedores/",
-        user.imagem
-      );
-      console.log(user.imagem);
-      try {
-        fs.unlinkSync(pathToOldImage);
-        console.log("Imagem anterior excluída com sucesso!");
-      } catch (err) {
-        console.error("Erro ao excluir a imagem anterior:", err);
+      if (user.imagem) {
+        const pathToOldImage = path.join(
+          __dirname,
+          "../uploads/vendedores/",
+          user.imagem
+        );
+        console.log(user.imagem);
+        try {
+          fs.unlinkSync(pathToOldImage);
+          console.log("Imagem anterior excluída com sucesso!");
+        } catch (err) {
+          console.error("Erro ao excluir a imagem anterior:", err);
+        }
       }
     }
-  }
 
-  if (nome) {
-    user.nome = nome;
-  }
+    if (nome) {
+      user.nome = nome;
+    }
 
-  if (nome_loja) {
-    user.nome_loja = nome_loja;
-  }
+    if (nome_loja) {
+      user.nome_loja = nome_loja;
+    }
 
-  if (email) {
-    user.email = email;
-  }
+    if (email) {
+      user.email = email;
+    }
 
-  if (cpf) {
-    user.cpf = cpf;
-  }
+    if (cpf) {
+      user.cpf = cpf;
+    }
 
-  if (cnpj) {
-    user.cnpj = cnpj;
-  }
+    if (cnpj) {
+      user.cnpj = cnpj;
+    }
 
-  if (genero) {
-    user.genero = genero;
-  }
+    if (genero) {
+      user.genero = genero;
+    }
 
-  if (telefone) {
-    user.telefone = telefone;
-  }
+    if (telefone) {
+      user.telefone = telefone;
+    }
 
-  if (endereco) {
-    user.endereco = endereco;
-  }
+    if (endereco) {
+      user.endereco = endereco;
+    }
 
-  if (cidade) {
-    user.cidade = cidade;
-  }
+    if (cidade) {
+      user.cidade = cidade;
+    }
 
-  if (estado) {
-    user.estado = estado;
-  }
+    if (estado) {
+      user.estado = estado;
+    }
 
-  if (cep) {
-    user.cep = cep;
-  }
+    if (cep) {
+      user.cep = cep;
+    }
 
-  if (senha) {
-    const salt = await bcrypt.genSalt();
-    const senhaHash = await bcrypt.hash(senha, salt);
-    user.senha = senhaHash;
-  }
+    if (senha) {
+      const salt = await bcrypt.genSalt();
+      const senhaHash = await bcrypt.hash(senha, salt);
+      user.senha = senhaHash;
+    }
 
-  if (imagem) {
-    user.imagem = imagem;
-  }
+    if (imagem) {
+      user.imagem = imagem;
+    }
 
-  const updateQuery = `
+    const updateQuery = `
    UPDATE vendedores 
    SET nome = ?, nome_loja = ?, email = ?, senha = ?, imagem = ?, cpf = ?, cnpj = ?, genero = ?, telefone = ?, endereco = ?, cidade = ?, estado = ?, cep = ?
    WHERE id_vendedor = ?
  `;
 
-  const values = [
-    user.nome,
-    user.nome_loja,
-    user.email,
-    user.senha,
-    user.imagem,
-    user.cpf,
-    user.cnpj,
-    user.genero,
-    user.telefone,
-    user.endereco,
-    user.cidade,
-    user.estado,
-    user.cep,
-    user.id_vendedor,
-  ];
+    const values = [
+      user.nome,
+      user.nome_loja,
+      user.email,
+      user.senha,
+      user.imagem,
+      user.cpf,
+      user.cnpj,
+      user.genero,
+      user.telefone,
+      user.endereco,
+      user.cidade,
+      user.estado,
+      user.cep,
+      user.id_vendedor,
+    ];
 
-  db.query(updateQuery, values, (err, results) => {
-    if (err) {
-      console.error("Erro ao atualizar o Loja:", err);
-      return res.status(500).json({ errors: "Erro ao atualizar o Loja" });
-    }
+    await query(updateQuery, values);
 
-    console.log("Loja atualizado com sucesso!");
-    return res.status(200).json({ message: "Loja atualizado com sucesso" });
-  });
+    console.log("Vendedor atualizado com sucesso!");
+    return res.status(200).json({ message: "Vendedor atualizado com sucesso" });
+  } catch (error) {
+    console.error("Erro ao atualizar o vendedor:", error);
+    return res.status(500).json({ errors: "Erro ao atualizar o vendedor" });
+  }
 };
 
 const getUserById = async (req, res) => {
@@ -269,12 +257,12 @@ const getUserById = async (req, res) => {
   try {
     user = await dbHelpers.findSellerById(db, id);
   } catch (error) {
-    res.status(404).json({ errors: ["Usuário não encontrado!"] });
+    res.status(404).json({ errors: ["Loja não encontrada!"] });
     return;
   }
 
   if (!user) {
-    res.status(404).json({ errors: ["Usuário não encontrado!"] });
+    res.status(404).json({ errors: ["Loja não encontrada!"] });
     return;
   }
   return res.status(200).json(user);

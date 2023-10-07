@@ -1,4 +1,6 @@
 const db = require("../config/db.js");
+const util = require("util");
+const query = util.promisify(db.query).bind(db);
 
 const insertBrand = async (req, res) => {
   const { nome, origem } = req.body;
@@ -9,41 +11,61 @@ const insertBrand = async (req, res) => {
     logotipo = req.file.filename;
   }
 
-  const q = "INSERT INTO marcas (nome, origem, logotipo) VALUES (?, ?, ?)";
+  try {
+    const q = "INSERT INTO marcas (nome, origem, logotipo) VALUES (?, ?, ?)";
+    const result = await query(q, [nome, origem, logotipo]);
 
-  db.query(q, [nome, origem, logotipo], (error, results) => {
-    if (error) {
-      reject(error);
-    } else {
-      resolve(results.insertId);
-    }
-  });
-
-  return res.status(201).json({ message: "Marca inserida com sucesso!" });
+    return res.status(201).json({
+      message: "Marca inserida com sucesso!",
+      insertId: result.insertId,
+    });
+  } catch (error) {
+    console.error("Erro ao inserir marca: ", error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
 };
 
 const getAllBrands = async (req, res) => {
-  let { limit, page } = req.query;
+  try {
+    let { limit, offset } = req.query;
+    limit = Number(limit) || 1;
+    offset = Number(offset) || 0;
+    const currentUrl = req.baseUrl;
 
-  limit = Number(limit) || 16;
-  page = Number(page) || 1;
+    // Consulta para contar o número total de marcas
+    const countQuery = "SELECT COUNT(id_marca) AS total FROM marcas";
+    const [{ total }] = await query(countQuery);
 
-  // Calcula o valor do offset dinamicamente com base no número da página e no limite
-  const offset = (page - 1) * limit;
+    // Consulta para obter os dados paginados
+    const selectQuery =
+      "SELECT id_marca, nome, origem, logotipo FROM marcas ORDER BY nome LIMIT ? OFFSET ?";
+    const data = await query(selectQuery, [limit, offset]);
 
-  console.log(limit, offset);
+    // Calcula URLs para próxima e página anterior
+    const next = offset + limit;
+    const nextUrl =
+      next < total
+        ? `${currentUrl}/brands?limit=${limit}&offset=${next}`
+        : null;
 
-  const q =
-    "SELECT id_marca, nome, origem, logotipo FROM marcas LIMIT ? OFFSET ?";
+    const previous = offset - limit < 0 ? null : offset - limit;
+    const previousUrl =
+      previous != null
+        ? `${currentUrl}?limit=${limit}&offset=${previous}`
+        : null;
 
-  db.query(q, [limit, offset], (err, data) => {
-    if (err) {
-      console.log("Erro ao buscar marcas: ", err);
-      return res.status(500).json({ error: "Erro interno do servidor" });
-    }
-
-    return res.status(200).json(data);
-  });
+    return res.status(200).json({
+      nextUrl,
+      previousUrl,
+      limit,
+      offset,
+      total,
+      data,
+    });
+  } catch (error) {
+    console.error("Erro ao buscar marcas: ", error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
 };
 
 const getBrandById = async (req, res) => {
@@ -64,47 +86,44 @@ const getBrandById = async (req, res) => {
 const insertCategory = async (req, res) => {
   const { nome, descricao } = req.body;
 
-  const q = "INSERT INTO categorias (nome, descricao) VALUES (?, ?)";
+  try {
+    const q = "INSERT INTO categorias (nome, descricao) VALUES (?, ?)";
+    const result = await query(q, [nome, descricao]);
 
-  db.query(q, [nome, descricao], (error, results) => {
-    if (error) {
-      console.log("Erro ao inserir categoria: ", error); // Registre o erro no console para depuração
-      return res.status(500).json({ error: "Erro interno do servidor" });
-    } else {
-      return res
-        .status(201)
-        .json({ message: "Categoria inserida com sucesso!" });
-    }
-  });
+    return res.status(201).json({
+      message: "Categoria inserida com sucesso!",
+      insertId: result.insertId,
+    });
+  } catch (error) {
+    console.error("Erro ao inserir categoria: ", error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
 };
 
 const getAllCategories = async (req, res) => {
   const q = "SELECT id_categoria, nome, descricao FROM categorias";
 
-  db.query(q, (err, data) => {
-    if (err) {
-      console.log("Erro ao buscar marcas: ", err);
-      return res.status(500).json({ error: "Erro interno do servidor" });
-    }
+  const data = await query(q);
 
-    return res.status(200).json(data);
-  });
+  return res.status(200).json(data);
 };
 
 const getCategoryById = async (req, res) => {
   const { id } = req.params;
 
-  const q = `SELECT id_categoria, nome, descricao FROM categorias WHERE id_categoria = ${id}`;
-
-  let category = null;
+  const q = `SELECT id_categoria, nome, descricao FROM categorias WHERE id_categoria = ?`;
 
   try {
-    category = db.query(q, (err, data) => {
-      return res.status(200).json(data);
-    });
+    const data = await query(q, [id]);
+
+    if (data.length === 0) {
+      return res.status(404).json({ errors: ["Categoria não encontrada!"] });
+    }
+
+    return res.status(200).json(data);
   } catch (error) {
-    res.status(404).json({ errors: ["Categoria não encontrada!"] });
-    return;
+    console.error("Erro ao buscar categoria por ID: ", error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
   }
 };
 

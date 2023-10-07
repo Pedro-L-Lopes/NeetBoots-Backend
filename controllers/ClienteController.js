@@ -1,4 +1,8 @@
 const db = require("../config/db.js");
+
+const util = require("util");
+const query = util.promisify(db.query).bind(db);
+
 const dbHelpers = require("../utils/dbHelpers.js");
 
 const bcrypt = require("bcryptjs");
@@ -17,17 +21,15 @@ const generateToken = (id) => {
 };
 
 // Buscando todos os clientes
-const getAllClients = (req, res) => {
-  const q = "SELECT id_cliente, nome, email, cpf, imagem FROM clientes";
-
-  db.query(q, (err, data) => {
-    if (err) {
-      console.error("Erro ao buscar clientes:", err);
-      return res.status(500).json({ error: "Erro interno do servidor" });
-    }
-
+const getAllClients = async (req, res) => {
+  try {
+    const q = "SELECT id_cliente, nome, email, cpf, imagem FROM clientes";
+    const data = await query(q);
     return res.status(200).json(data);
-  });
+  } catch (error) {
+    console.error("Erro ao buscar clientes:", error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
 };
 
 // Registrando
@@ -43,34 +45,22 @@ const register = async (req, res) => {
 
     const passwordHash = await bcrypt.hash(senha, await bcrypt.genSalt());
 
-    const insertedUserId = await new Promise((resolve, reject) => {
-      const sql =
-        "INSERT INTO clientes (nome, email, senha, telefone, data_nascimento, genero, tipo_conta) VALUES (?, ?, ?, ?, ?, ?, ?)";
-      db.query(
-        sql,
-        [
-          nome,
-          email,
-          passwordHash,
-          telefone,
-          data_nascimento,
-          genero,
-          "Cliente",
-        ],
-        (error, results) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(results.insertId);
-          }
-        }
-      );
-    });
+    const sql =
+      "INSERT INTO clientes (nome, email, senha, telefone, data_nascimento, genero, tipo_conta) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    const insertedUserId = await query(sql, [
+      nome,
+      email,
+      passwordHash,
+      telefone,
+      data_nascimento,
+      genero,
+      "Cliente",
+    ]);
 
-    const token = generateToken(insertedUserId);
+    const token = generateToken(insertedUserId.insertId);
 
     return res.status(201).json({
-      id: insertedUserId,
+      id: insertedUserId.insertId,
       token,
     });
   } catch (error) {
@@ -84,7 +74,6 @@ const login = async (req, res) => {
 
   try {
     const user = await dbHelpers.findClientByEmail(db, email);
-    console.log(user.senha);
 
     if (!user) {
       return res.status(404).json({ errors: ["Usuário não encontrado!"] });
@@ -134,133 +123,131 @@ const updateClient = async (req, res) => {
 
   const reqUser = req.user;
 
-  const user = await dbHelpers.findClientById(db, reqUser.id_cliente);
+  try {
+    const user = await dbHelpers.findClientById(db, reqUser.id_cliente);
 
-  if (!req.user) {
-    return res.status(400).json({ message: "Usuário não autenticado" });
-  }
+    if (!req.user) {
+      return res.status(400).json({ message: "Usuário não autenticado" });
+    }
 
-  let imagem = null;
+    let imagem = null;
 
-  if (req.file) {
-    imagem = req.file.filename;
+    if (req.file) {
+      imagem = req.file.filename;
 
-    if (user.imagem) {
-      const pathToOldImage = path.join(
-        __dirname,
-        "../uploads/clientes/",
-        user.imagem
-      );
-      console.log(user.imagem);
-      try {
-        fs.unlinkSync(pathToOldImage);
-        console.log("Imagem anterior excluída com sucesso!");
-      } catch (err) {
-        console.error("Erro ao excluir a imagem anterior:", err);
+      if (user.imagem) {
+        const pathToOldImage = path.join(
+          __dirname,
+          "../uploads/clientes/",
+          user.imagem
+        );
+        console.log(user.imagem);
+        try {
+          fs.unlinkSync(pathToOldImage);
+          console.log("Imagem anterior excluída com sucesso!");
+        } catch (err) {
+          console.error("Erro ao excluir a imagem anterior:", err);
+        }
       }
     }
-  }
 
-  if (nome) {
-    user.nome = nome;
-  }
+    if (nome) {
+      user.nome = nome;
+    }
 
-  if (email) {
-    user.email = email;
-  }
+    if (email) {
+      user.email = email;
+    }
 
-  if (cpf) {
-    user.cpf = cpf;
-  }
+    if (cpf) {
+      user.cpf = cpf;
+    }
 
-  if (genero) {
-    user.genero = genero;
-  }
+    if (genero) {
+      user.genero = genero;
+    }
 
-  if (telefone) {
-    user.telefone = telefone;
-  }
+    if (telefone) {
+      user.telefone = telefone;
+    }
 
-  if (endereco) {
-    user.endereco = endereco;
-  }
+    if (endereco) {
+      user.endereco = endereco;
+    }
 
-  if (cidade) {
-    user.cidade = cidade;
-  }
+    if (cidade) {
+      user.cidade = cidade;
+    }
 
-  if (estado) {
-    user.estado = estado;
-  }
+    if (estado) {
+      user.estado = estado;
+    }
 
-  if (cep) {
-    user.cep = cep;
-  }
+    if (cep) {
+      user.cep = cep;
+    }
 
-  if (data_nascimento) {
-    user.data_nascimento = data_nascimento;
-  }
+    if (data_nascimento) {
+      user.data_nascimento = data_nascimento;
+    }
 
-  if (senha) {
-    const salt = await bcrypt.genSalt();
-    const senhaHash = await bcrypt.hash(senha, salt);
-    user.senha = senhaHash;
-  }
+    if (senha) {
+      const salt = await bcrypt.genSalt();
+      const senhaHash = await bcrypt.hash(senha, salt);
+      user.senha = senhaHash;
+    }
 
-  if (imagem) {
-    user.imagem = imagem;
-  }
+    if (imagem) {
+      user.imagem = imagem;
+    }
 
-  const updateQuery = `
+    const updateQuery = `
    UPDATE clientes 
    SET nome = ?, email = ?, senha = ?, imagem = ?, cpf = ?, data_nascimento = ?, genero = ?, telefone = ?, endereco = ?, cidade = ?, estado = ?, cep = ?
    WHERE id_cliente = ?
  `;
 
-  const values = [
-    user.nome,
-    user.email,
-    user.senha,
-    user.imagem,
-    user.cpf,
-    user.data_nascimento,
-    user.genero,
-    user.telefone,
-    user.endereco,
-    user.cidade,
-    user.estado,
-    user.cep,
-    user.id_cliente,
-  ];
+    const values = [
+      user.nome,
+      user.email,
+      user.senha,
+      user.imagem,
+      user.cpf,
+      user.data_nascimento,
+      user.genero,
+      user.telefone,
+      user.endereco,
+      user.cidade,
+      user.estado,
+      user.cep,
+      user.id_cliente,
+    ];
 
-  db.query(updateQuery, values, (err, results) => {
-    if (err) {
-      console.error("Erro ao atualizar o cliente:", err);
-      return res.status(500).json({ message: "Erro ao atualizar o cliente" });
-    }
+    await query(updateQuery, values);
 
     console.log("Cliente atualizado com sucesso!");
     return res.status(200).json({ message: "Cliente atualizado com sucesso" });
-  });
+  } catch (error) {
+    console.error("Erro ao atualizar o cliente:", error);
+    return res.status(500).json({ message: "Erro ao atualizar o cliente" });
+  }
 };
 
 const getUserById = async (req, res) => {
   const { id } = req.params;
 
-  let user = null;
-
   try {
-    user = await dbHelpers.findClientById(db, id);
-  } catch (error) {
-    res.status(404).json({ errors: ["Usuário não encontrado!"] });
-    return;
-  }
+    const user = await dbHelpers.findClientById(db, id);
 
-  if (!user) {
-    res.status(404).json({ errors: ["Usuário não encontrado!"] });
-    return;
+    if (!user) {
+      return res.status(404).json({ errors: ["Usuário não encontrado!"] });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    console.error("Erro ao buscar usuário por ID:", error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
   }
-  return res.status(200).json(user);
 };
 
 module.exports = {
