@@ -63,6 +63,12 @@ const createProduct = async (req, res) => {
       return;
     }
 
+    req.files.forEach(async (file) => {
+      const insertImageQuery =
+        "INSERT INTO imagens_produtos (id_produto, imagem) VALUES (?, ?)";
+      await query(insertImageQuery, [newProduct.insertId, file.filename]);
+    });
+
     // Consulta para obter os detalhes do novo produto
     const getNewProductQuery = "SELECT * FROM produtos WHERE id_produto = ?";
     const [productDetails] = await query(getNewProductQuery, [

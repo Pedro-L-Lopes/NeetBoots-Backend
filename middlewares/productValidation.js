@@ -53,6 +53,13 @@ const productCreateValidation = () => {
       .withMessage("Insira a categoria do produto")
       .isInt()
       .withMessage("Insira a categoria do produto"),
+    body("imagens").custom((value, { req }) => {
+      // Verifique se pelo menos uma imagem foi enviada
+      if (!req.files || req.files.length === 0) {
+        throw new Error("Adicione pelo menos uma imagem ao produto");
+      }
+      return true;
+    }),
   ];
 };
 

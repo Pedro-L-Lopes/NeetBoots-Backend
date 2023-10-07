@@ -35,4 +35,16 @@ const imageUpload = multer({
   },
 });
 
-module.exports = { imageUpload };
+const productImageUpload = multer({
+  storage: imageStorage,
+  fileFilter: (req, file, cb) => {
+    if (!file.originalname.match(/\.(png|jpg|jpeg|gif|webp)$/)) {
+      return cb(
+        new Error("Por favor, envie apenas png, jpg, jpeg, gif ou WebP!")
+      );
+    }
+    cb(null, true);
+  },
+}).array("imagens", 5);
+
+module.exports = { imageUpload, productImageUpload };
