@@ -3,8 +3,6 @@ const db = require("../config/db.js");
 const util = require("util");
 const query = util.promisify(db.query).bind(db);
 
-const dbHelpers = require("../utils/dbHelpers.js");
-
 const createProduct = async (req, res) => {
   const {
     nome,
@@ -109,4 +107,50 @@ const getProductById = async (req, res) => {
   }
 };
 
-module.exports = { createProduct, getProductById };
+const getAllProducts = async (req, res) => {
+  try {
+    let { limit, offset } = req.query;
+
+    limit = Number(limit) || 16;
+    offset = Number(offset) || 0;
+    const currentUrl = req.baseUrl;
+
+    // Consulta para contar o número total de produtos
+    const countQuery = "SELECT COUNT(id_produto) AS total FROM produtos";
+    const [{ total }] = await query(countQuery);
+
+    // Consulta para obter os dados paginados
+    const selectQuery =
+      "SELECT id_produto, nome, descricao, preco, tamanho, quant_estoque, tags, disponibilidade, em_promocao, preco_promocional, id_marca, id_categoria, id_vendedor FROM produtos ORDER BY data_atualizacao LIMIT ? OFFSET ?";
+    const data = await query(selectQuery, [limit, offset]);
+
+    // Calcula URLs para próxima e página anterior
+    const next = offset + limit;
+    const nextUrl =
+      next < total ? `${currentUrl}/?limit=${limit}&offset=${next}` : null;
+
+    const previous = offset - limit < 0 ? null : offset - limit;
+    const previousUrl =
+      previous != null
+        ? `${currentUrl}/?limit=${limit}&offset=${previous}`
+        : null;
+
+    return res.status(200).json({
+      nextUrl,
+      previousUrl,
+      limit,
+      offset,
+      total,
+      data,
+    });
+  } catch (error) {
+    console.error("Erro ao buscar produtos: ", error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
+};
+
+module.exports = {
+  createProduct,
+  getProductById,
+  getAllProducts,
+};

@@ -51,7 +51,7 @@ const getAllBrands = async (req, res) => {
     const previous = offset - limit < 0 ? null : offset - limit;
     const previousUrl =
       previous != null
-        ? `${currentUrl}?limit=${limit}&offset=${previous}`
+        ? `${currentUrl}/brands?limit=${limit}&offset=${previous}`
         : null;
 
     return res.status(200).json({
