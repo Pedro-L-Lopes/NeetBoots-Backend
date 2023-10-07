@@ -5,6 +5,7 @@ const router = express.Router();
 const {
   createProduct,
   cadeouser,
+  getProductById,
 } = require("../controllers/ProductController");
 
 // Middlewares
@@ -21,6 +22,6 @@ router.post(
   validate,
   createProduct
 );
-router.get("/cadeocara", authGuard(2), cadeouser);
+router.get("/:id", getProductById);
 
 module.exports = router;
