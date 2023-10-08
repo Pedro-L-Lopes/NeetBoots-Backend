@@ -121,7 +121,79 @@ const getAllProducts = async (req, res) => {
 
     // Consulta para obter os dados paginados
     const selectQuery =
-      "SELECT id_produto, nome, descricao, preco, tamanho, quant_estoque, tags, disponibilidade, em_promocao, preco_promocional, id_marca, id_categoria, id_vendedor FROM produtos ORDER BY data_atualizacao LIMIT ? OFFSET ?";
+      "SELECT id_produto, nome, descricao, preco, tamanho, quant_estoque, tags, disponibilidade, em_promocao, preco_promocional, id_marca, id_categoria, id_vendedor FROM produtos WHERE disponibilidade = true ORDER BY data_atualizacao LIMIT ? OFFSET ?";
+    const data = await query(selectQuery, [limit, offset]);
+
+    // Calcula URLs para próxima e página anterior
+    const next = offset + limit;
+    const nextUrl =
+      next < total ? `${currentUrl}/?limit=${limit}&offset=${next}` : null;
+
+    const previous = offset - limit < 0 ? null : offset - limit;
+    const previousUrl =
+      previous != null
+        ? `${currentUrl}/?limit=${limit}&offset=${previous}`
+        : null;
+
+    return res.status(200).json({
+      nextUrl,
+      previousUrl,
+      limit,
+      offset,
+      total,
+      data,
+    });
+  } catch (error) {
+    console.error("Erro ao buscar produtos: ", error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
+};
+
+const filterProducts = async (req, res) => {
+  try {
+    let { limit, offset, inPromotion, minPrice, maxPrice, name, tags, sizes } =
+      req.query;
+
+    limit = Number(limit) || 16;
+    offset = Number(offset) || 0;
+    const currentUrl = req.baseUrl;
+
+    let whereClause = "WHERE disponibilidade = true";
+
+    if (inPromotion) {
+      whereClause += " AND em_promocao = true";
+    }
+
+    if (minPrice) {
+      whereClause += ` AND preco >= ${minPrice}`;
+    }
+
+    if (maxPrice) {
+      whereClause += ` AND preco <= ${maxPrice}`;
+    }
+
+    if (name) {
+      whereClause += ` AND nome LIKE '%${name}%'`;
+    }
+
+    if (tags) {
+      const tagsArray = tags.split(",");
+      whereClause += ` AND (tags LIKE '%${tagsArray.join(
+        "%' OR tags LIKE '%"
+      )}%')`;
+    }
+
+    if (sizes) {
+      const sizesArray = sizes.split(",");
+      whereClause += ` AND (tamanho IN ('${sizesArray.join("','")}')`;
+    }
+
+    // Consulta para contar o número total de produtos
+    const countQuery = `SELECT COUNT(id_produto) AS total FROM produtos ${whereClause}`;
+    const [{ total }] = await query(countQuery);
+
+    // Consulta para obter os dados paginados
+    const selectQuery = `SELECT id_produto, nome, descricao, preco, tamanho, quant_estoque, tags, disponibilidade, em_promocao, preco_promocional, id_marca, id_categoria, id_vendedor FROM produtos ${whereClause} ORDER BY data_atualizacao LIMIT ? OFFSET ?`;
     const data = await query(selectQuery, [limit, offset]);
 
     // Calcula URLs para próxima e página anterior
@@ -153,4 +225,5 @@ module.exports = {
   createProduct,
   getProductById,
   getAllProducts,
+  filterProducts,
 };

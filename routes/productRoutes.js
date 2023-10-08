@@ -6,6 +6,7 @@ const {
   createProduct,
   getProductById,
   getAllProducts,
+  filterProducts,
 } = require("../controllers/ProductController");
 
 // Middlewares
@@ -22,6 +23,7 @@ router.post(
   validate,
   createProduct
 );
+router.get("/fil", filterProducts);
 router.get("/category", getProductById);
 router.get("/:id", getProductById);
 router.get("/", getAllProducts);
