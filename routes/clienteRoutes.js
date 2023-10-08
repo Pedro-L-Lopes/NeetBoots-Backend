@@ -9,6 +9,7 @@ const {
   getCurrentUser,
   updateClient,
   getUserById,
+  AddToCart,
 } = require("../controllers/ClienteController");
 
 // Middlewares
@@ -25,6 +26,7 @@ router.get("/", getAllClients);
 router.post("/register", clientCreateValidation(), validate, register);
 router.post("/login", loginValidation(), validate, login);
 router.get("/profile", authGuard(1), getCurrentUser);
+router.post("/addToCart", authGuard(1), AddToCart);
 router.put(
   "/",
   authGuard(1),

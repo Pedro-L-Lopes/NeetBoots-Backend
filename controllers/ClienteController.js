@@ -250,6 +250,55 @@ const getUserById = async (req, res) => {
   }
 };
 
+const AddToCart = async (req, res) => {
+  const { id_produto, quantidade, tamanho_escolhido } = req.body;
+  const user = req.user;
+  console.log(user);
+
+  try {
+    // Validando produto
+    const productQ =
+      "SELECT id_produto, nome, preco FROM produtos WHERE id_produto = ?";
+    const product = await query(productQ, [id_produto]);
+
+    if (product.length == 0) {
+      return res
+        .status(404)
+        .json({ errors: "Produto não encontrado ou indisponível!" });
+    }
+
+    const preco_total = product[0].preco * quantidade;
+
+    const productInCart = {
+      ...product,
+      quantidade: quantidade,
+      tamanho_escolhido: tamanho_escolhido,
+      preco_total: preco_total,
+    };
+
+    // Verificar se está no carrinho o produto com o mesmo tamanho
+    const actualQ =
+      "SELECT carrinho_compras FROM clientes WHERE id_cliente = ?";
+    const actualCart = await query(actualQ, [user.id_cliente]);
+
+    console.log(actualCart);
+
+    // Inserindo produto no carrinho
+    const productInCartJSON = JSON.stringify(productInCart);
+
+    const insertQ =
+      "UPDATE clientes SET carrinho_compras = ? WHERE id_cliente = ?";
+    await query(insertQ, [productInCartJSON, user.id_cliente]);
+
+    return res
+      .status(201)
+      .json({ message: ["Produto adicionado ao carrinho"] });
+  } catch (error) {
+    console.error("Erro ao adicionar produto ao carrinho:", error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -257,4 +306,5 @@ module.exports = {
   updateClient,
   getUserById,
   getAllClients,
+  AddToCart,
 };
