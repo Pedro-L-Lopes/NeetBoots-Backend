@@ -221,9 +221,49 @@ const filterProducts = async (req, res) => {
   }
 };
 
+const promotionProducts = async (req, res) => {
+  try {
+    const q =
+      "SELECT id_produto, nome, descricao, preco, tamanho, quant_estoque, tags, em_promocao, preco_promocional, id_marca, id_categoria, id_vendedor FROM produtos WHERE disponibilidade = 1 AND em_promocao = 1 ORDER BY data_atualizacao LIMIT 16";
+    const data = await query(q);
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error("Erro ao buscar clientes:", error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
+};
+
+const lastProducts = async (req, res) => {
+  try {
+    const q =
+      "SELECT id_produto, nome, descricao, preco, tamanho, quant_estoque, tags, em_promocao, preco_promocional, id_marca, id_categoria, id_vendedor FROM produtos WHERE disponibilidade = 1 ORDER BY data_criacao DESC LIMIT 16";
+    const data = await query(q);
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error("Erro ao buscar clientes:", error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
+};
+
+const categoryProducts = async (req, res) => {
+  const { category } = req.query;
+
+  try {
+    const q = `SELECT id_produto, produtos.nome, produtos.descricao, preco, tamanho, quant_estoque, tags, em_promocao, preco_promocional, id_marca, produtos.id_categoria, id_vendedor FROM produtos JOIN categorias ON categorias.id_categoria = produtos.id_categoria WHERE disponibilidade = 1 and categorias.nome = '${category}' ORDER BY data_criacao DESC LIMIT 16;`;
+    const data = await query(q);
+    return res.status(200).json(data);
+  } catch (error) {
+    console.error("Erro ao buscar clientes:", error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
+};
+
 module.exports = {
   createProduct,
   getProductById,
   getAllProducts,
   filterProducts,
+  promotionProducts,
+  lastProducts,
+  categoryProducts,
 };
