@@ -3,6 +3,11 @@ const db = require("../config/db.js");
 const util = require("util");
 const query = util.promisify(db.query).bind(db);
 
+// Atualizar produtos
+// Excluir produtos
+// Editar produtos
+
+// Criar produto
 const createProduct = async (req, res) => {
   const {
     nome,
@@ -83,6 +88,7 @@ const createProduct = async (req, res) => {
   }
 };
 
+// Pegar produto pelo id
 const getProductById = async (req, res) => {
   const productId = req.params.id;
 
@@ -107,6 +113,54 @@ const getProductById = async (req, res) => {
   }
 };
 
+// Pegar produtos do vendedor/loja
+const getSellerProducts = async (req, res) => {
+  const { id } = req.params;
+  const { limit, offset } = req.query;
+
+  try {
+    // Verifique se os parâmetros limit e offset foram fornecidos ou use valores padrão
+
+    const limitValue = Number(limit) || 16;
+    const offsetValue = Number(offset) || 0;
+    // Consulta para contar o número total de produtos do vendedor
+    const countQuery =
+      "SELECT COUNT(id_produto) AS total FROM produtos WHERE id_vendedor = ?";
+    const [{ total }] = await query(countQuery, [id]);
+
+    // Consulta para obter os dados paginados dos produtos do vendedor
+    const selectQuery =
+      "SELECT id_produto, nome, descricao, preco FROM produtos WHERE id_vendedor = ? ORDER BY data_atualizacao LIMIT ? OFFSET ?";
+    const products = await query(selectQuery, [id, limitValue, offsetValue]);
+
+    // Calcula URLs para próxima e página anterior
+    const currentUrl = req.baseUrl;
+    const next = offsetValue + limitValue;
+    const nextUrl =
+      next < total ? `${currentUrl}?limit=${limitValue}&offset=${next}` : null;
+
+    const previous =
+      offsetValue - limitValue < 0 ? null : offsetValue - limitValue;
+    const previousUrl =
+      previous !== null
+        ? `${currentUrl}?limit=${limitValue}&offset=${previous}`
+        : null;
+
+    return res.status(200).json({
+      nextUrl,
+      previousUrl,
+      limit: limitValue,
+      offset: offsetValue,
+      total,
+      data: products,
+    });
+  } catch (error) {
+    console.error("Erro ao buscar produtos do vendedor: ", error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
+};
+
+// Pegar todos os produtos
 const getAllProducts = async (req, res) => {
   try {
     let { limit, offset } = req.query;
@@ -149,10 +203,20 @@ const getAllProducts = async (req, res) => {
   }
 };
 
+// Filtrar produtos por promoção, preço, nome, tags e categoria
 const filterProducts = async (req, res) => {
   try {
-    let { limit, offset, inPromotion, minPrice, maxPrice, name, tags, sizes } =
-      req.query;
+    let {
+      limit,
+      offset,
+      inPromotion,
+      minPrice,
+      maxPrice,
+      name,
+      tags,
+      sizes,
+      category,
+    } = req.query;
 
     limit = Number(limit) || 16;
     offset = Number(offset) || 0;
@@ -176,11 +240,12 @@ const filterProducts = async (req, res) => {
       whereClause += ` AND nome LIKE '%${name}%'`;
     }
 
+    if (category) {
+      whereClause += ` AND id_categoria = ${category}`;
+    }
+
     if (tags) {
-      const tagsArray = tags.split(",");
-      whereClause += ` AND (tags LIKE '%${tagsArray.join(
-        "%' OR tags LIKE '%"
-      )}%')`;
+      whereClause += ` AND tags LIKE '%${tags}%'`;
     }
 
     if (sizes) {
@@ -218,6 +283,87 @@ const filterProducts = async (req, res) => {
   } catch (error) {
     console.error("Erro ao buscar produtos: ", error);
     return res.status(500).json({ error: "Erro interno do servidor" });
+  }
+};
+
+const searchProducts = async (req, res) => {
+  const { q, limit, offset } = req.query;
+
+  const limitValue = Number(limit) || 20;
+  const offsetValue = Number(offset) || 0;
+
+  const keywords = q.split(" ");
+
+  // Inicializa a lista de condições WHERE vazia
+  const conditions = [];
+
+  // Cria a lista de parâmetros para a consulta
+  const searchParams = [];
+
+  // Para cada palavra-chave, adicione uma condição à lista
+  keywords.forEach((keyword) => {
+    conditions.push(
+      "(produtos.nome LIKE ? OR categorias.nome LIKE ? OR produtos.tags LIKE ?)"
+    );
+    searchParams.push(`%${keyword}%`);
+    searchParams.push(`%${keyword}%`);
+    searchParams.push(`%${keyword}%`);
+  });
+
+  // Construa a consulta SQL com base nas condições e use DISTINCT para retornar resultados exclusivos
+  let qbd = `
+    SELECT DISTINCT produtos.id_produto, produtos.nome, produtos.descricao, produtos.preco, produtos.tamanho, produtos.quant_estoque, produtos.tags, produtos.disponibilidade, produtos.em_promocao, produtos.preco_promocional, produtos.id_marca, produtos.id_categoria, produtos.id_vendedor, produtos.data_criacao, produtos.data_atualizacao, marcas.origem, marcas.logotipo
+    FROM produtos
+    JOIN categorias ON categorias.id_categoria = produtos.id_categoria
+    JOIN marcas ON marcas.id_marca = produtos.id_marca
+    WHERE ${conditions.join(
+      " OR "
+    )} AND produtos.disponibilidade = 1 ORDER BY data_atualizacao LIMIT ? OFFSET ?
+  `;
+
+  try {
+    // Calcula o total de produtos na pesquisa usando uma subconsulta
+    const totalQuery = `
+      SELECT COUNT(*) AS total FROM (
+        ${qbd}
+      ) AS searchResult
+    `;
+
+    // Adiciona os valores de limit e offset aos parâmetros da consulta
+    searchParams.push(limitValue);
+    searchParams.push(offsetValue);
+
+    const [{ total }] = await query(totalQuery, searchParams);
+
+    // Calcula URLs para próxima e página anterior
+    const currentUrl = req.baseUrl;
+    console.log(currentUrl);
+    const next = offsetValue + limitValue;
+    const nextUrl =
+      next < total
+        ? `${currentUrl}/searchProducts?limit=${limitValue}&offset=${next}`
+        : null;
+
+    const previous =
+      offsetValue - limitValue < 0 ? null : offsetValue - limitValue;
+    const previousUrl =
+      previous !== null
+        ? `${currentUrl}/searchProducts?limit=${limitValue}&offset=${previous}`
+        : null;
+
+    // Agora você pode usar o valor de "total" na resposta
+    const data = await query(qbd, searchParams);
+    return res.status(200).json({
+      nextUrl,
+      previousUrl,
+      limit: limitValue,
+      offset: offsetValue,
+      total,
+      data,
+    });
+  } catch (error) {
+    console.error("Erro na pesquisa de produtos:", error);
+    res.status(500).json({ errors: ["Erro interno do servidor"] });
   }
 };
 
@@ -261,8 +407,10 @@ const categoryProducts = async (req, res) => {
 module.exports = {
   createProduct,
   getProductById,
+  getSellerProducts,
   getAllProducts,
   filterProducts,
+  searchProducts,
   promotionProducts,
   lastProducts,
   categoryProducts,

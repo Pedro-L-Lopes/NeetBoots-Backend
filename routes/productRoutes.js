@@ -10,6 +10,8 @@ const {
   promotionProducts,
   categoryProducts,
   lastProducts,
+  getSellerProducts,
+  searchProducts,
 } = require("../controllers/ProductController");
 
 // Middlewares
@@ -26,7 +28,8 @@ router.post(
   validate,
   createProduct
 );
-router.get("/fil", filterProducts);
+router.get("/seller/:id", getSellerProducts);
+router.get("/searchProducts", searchProducts);
 router.get("/promotion", promotionProducts);
 router.get("/products-category", categoryProducts);
 router.get("/new-products", lastProducts);
