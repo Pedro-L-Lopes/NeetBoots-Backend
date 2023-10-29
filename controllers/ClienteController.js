@@ -34,7 +34,7 @@ const getAllClients = async (req, res) => {
 
 // Registrando
 const register = async (req, res) => {
-  const { nome, email, senha, telefone, data_nascimento, genero } = req.body;
+  const { nome, email, senha, telefone, dataNascimento, genero } = req.body;
 
   try {
     const emailExists = await dbHelpers.findClientByEmail(db, email);
@@ -52,7 +52,7 @@ const register = async (req, res) => {
       email,
       passwordHash,
       telefone,
-      data_nascimento,
+      dataNascimento,
       genero,
       "Cliente",
     ]);

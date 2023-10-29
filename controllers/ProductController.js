@@ -289,6 +289,12 @@ const filterProducts = async (req, res) => {
 const searchProducts = async (req, res) => {
   const { q, limit, offset } = req.query;
 
+  if (typeof q !== "string" || !q.trim()) {
+    return res
+      .status(400)
+      .json({ errors: ['O parâmetro de pesquisa "q" é inválido.'] });
+  }
+
   const limitValue = Number(limit) || 20;
   const offsetValue = Number(offset) || 0;
 
@@ -337,7 +343,6 @@ const searchProducts = async (req, res) => {
 
     // Calcula URLs para próxima e página anterior
     const currentUrl = req.baseUrl;
-    console.log(currentUrl);
     const next = offsetValue + limitValue;
     const nextUrl =
       next < total
@@ -351,8 +356,16 @@ const searchProducts = async (req, res) => {
         ? `${currentUrl}/searchProducts?limit=${limitValue}&offset=${previous}`
         : null;
 
-    // Agora você pode usar o valor de "total" na resposta
     const data = await query(qbd, searchParams);
+
+    for (let i = 0; i < data.length; i++) {
+      const productId = data[i].id_produto;
+      const getImagesQuery =
+        "SELECT imagem FROM imagens_produtos WHERE id_produto = ?";
+      const images = await query(getImagesQuery, [productId]);
+      data[i].imagens = images;
+    }
+
     return res.status(200).json({
       nextUrl,
       previousUrl,

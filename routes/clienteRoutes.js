@@ -23,7 +23,7 @@ const authGuard = require("../middlewares/authGuard");
 const { imageUpload } = require("../middlewares/imageUpload");
 
 router.get("/", getAllClients);
-router.post("/register", clientCreateValidation(), validate, register);
+router.post("/cadastro", clientCreateValidation(), validate, register);
 router.post("/login", loginValidation(), validate, login);
 router.get("/profile", authGuard(1), getCurrentUser);
 router.post("/addToCart", authGuard(1), AddToCart);
